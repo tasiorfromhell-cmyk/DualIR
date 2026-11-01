@@ -170,9 +170,24 @@ MainPanel::MainPanel (DualIRAudioProcessor& p) : owner (p)
     const auto source = juce::ImageCache::getFromMemory
         (DualIRGuiAssets::logo_jpg, DualIRGuiAssets::logo_jpgSize);
     if (source.isValid())
-        backgroundArt = source.getClippedImage ({ source.getWidth() * 17 / 100,
+    {
+        const auto crop = source.getClippedImage ({ source.getWidth() * 17 / 100,
             source.getHeight() * 15 / 100, source.getWidth() * 66 / 100,
             source.getHeight() * 72 / 100 });
+        backgroundArt = juce::Image (juce::Image::ARGB, crop.getWidth(), crop.getHeight(), true);
+        juce::Graphics artGraphics (backgroundArt);
+        artGraphics.drawImageAt (crop, 0, 0);
+        // Fade all four edges so the rectangular photograph blends into the panel.
+        juce::Image::BitmapData pixels (backgroundArt, juce::Image::BitmapData::readWrite);
+        const auto fade = static_cast<float> (juce::jmin (pixels.width, pixels.height)) * 0.14f;
+        for (int y = 0; y < pixels.height; ++y)
+            for (int x = 0; x < pixels.width; ++x)
+            {
+                const auto distance = juce::jmin (x, y, pixels.width - 1 - x, pixels.height - 1 - y);
+                const auto alpha = juce::jlimit (0.0f, 1.0f, static_cast<float> (distance) / fade);
+                pixels.setPixelColour (x, y, pixels.getPixelColour (x, y).withAlpha (alpha));
+            }
+    }
     lookAndFeel.setColour (juce::Slider::thumbColourId, text);
     lookAndFeel.setColour (juce::Slider::textBoxTextColourId, text);
     lookAndFeel.setColour (juce::Slider::textBoxBackgroundColourId, background);
@@ -218,7 +233,7 @@ void MainPanel::paint (juce::Graphics& g)
     {
         juce::Graphics::ScopedSaveState state (g);
         g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-        g.setOpacity (0.26f);
+        g.setOpacity (0.20f);
         // MainPanel's transform scales artwork and controls together at every size.
         g.drawImageWithin (backgroundArt, 100, 14, 600, 438,
                            juce::RectanglePlacement::centred);
