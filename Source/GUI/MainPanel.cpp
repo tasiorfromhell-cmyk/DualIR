@@ -256,9 +256,12 @@ void MainPanel::paint (juce::Graphics& g)
 {
     g.fillAll (background); g.setColour (amber);
     g.setFont (juce::Font (juce::FontOptions { 31.0f }).boldened());
-    g.drawText ("DualIR", 26, 16, 170, 39, juce::Justification::centredLeft);
+    g.drawText ("RottingIR", 26, 16, 170, 39, juce::Justification::centredLeft);
     g.setColour (subdued); g.setFont (juce::Font (juce::FontOptions { 12.0f }));
     g.drawText ("DUAL CABINET CONVOLUTION", 198, 25, 300, 20, juce::Justification::centredLeft);
+    g.setFont (juce::Font (juce::FontOptions { 10.0f }));
+    g.drawText ("RottingPitStudio", 198, 45, 300, 16, juce::Justification::centredLeft);
+    g.setFont (juce::Font (juce::FontOptions { 12.0f }));
     g.drawText ("A", 30, 551, 20, 25, juce::Justification::centredLeft);
     g.drawText ("B", 436, 551, 20, 25, juce::Justification::centredLeft);
     g.setColour (border); g.drawHorizontalLine (589, 26.0f, 774.0f);

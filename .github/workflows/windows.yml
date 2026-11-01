@@ -72,8 +72,8 @@ jobs:
       - name: Verify Windows x64 binary and package whole VST3 bundle
         run: |
           $ErrorActionPreference = 'Stop'
-          $bundle = Join-Path $env:GITHUB_WORKSPACE 'build/windows-vs2022/DualIR_artefacts/Release/VST3/DualIR.vst3'
-          $relativeBinary = 'Contents/x86_64-win/DualIR.vst3'
+          $bundle = Join-Path $env:GITHUB_WORKSPACE 'build/windows-vs2022/DualIR_artefacts/Release/VST3/RottingIR.vst3'
+          $relativeBinary = 'Contents/x86_64-win/RottingIR.vst3'
           $binary = Join-Path $bundle $relativeBinary
           if (-not (Test-Path -LiteralPath $bundle -PathType Container) -or
               -not (Test-Path -LiteralPath $binary -PathType Leaf)) {
@@ -81,23 +81,23 @@ jobs:
           }
           $bytes = [System.IO.File]::ReadAllBytes($binary)
           if ($bytes.Length -lt 64 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) {
-            throw 'DualIR.vst3 is not a Windows PE binary.'
+            throw 'RottingIR.vst3 is not a Windows PE binary.'
           }
           $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
           if ($peOffset -lt 0 -or $peOffset + 6 -gt $bytes.Length -or
               [BitConverter]::ToUInt32($bytes, $peOffset) -ne 0x00004550 -or
               [BitConverter]::ToUInt16($bytes, $peOffset + 4) -ne 0x8664) {
-            throw 'DualIR.vst3 is not a valid AMD64 Windows binary.'
+            throw 'RottingIR.vst3 is not a valid AMD64 Windows binary.'
           }
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE 'dist/DualIR-Windows-x64-VST3.zip'
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE 'dist/RottingIR-Windows-x64-VST3.zip'
           if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $bundle, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $true)
           $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
           try {
-            $expected = "DualIR.vst3/$relativeBinary"
+            $expected = "RottingIR.vst3/$relativeBinary"
             $paths = @($zip.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
             if ($expected -notin $paths) { throw "ZIP does not contain $expected" }
             $bundleFiles = @(Get-ChildItem -LiteralPath $bundle -Recurse -Force -File)
@@ -111,8 +111,8 @@ jobs:
       - name: Upload Windows VST3 ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: DualIR-Windows-x64-VST3
-          path: dist/DualIR-Windows-x64-VST3.zip
+          name: RottingIR-Windows-x64-VST3
+          path: dist/RottingIR-Windows-x64-VST3.zip
           if-no-files-found: error
           compression-level: 0
 
@@ -120,7 +120,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: DualIR-Windows-failure-logs
+          name: RottingIR-Windows-failure-logs
           path: |
             build/windows-vs2022/Testing/Temporary/*.log
             build/windows-vs2022/CMakeFiles/CMakeConfigureLog.yaml

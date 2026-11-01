@@ -234,7 +234,8 @@ void checkPlugin (Checks& checks, NativeModule& module)
     checks.require (owner.factory != nullptr, "GetPluginFactory creates the native VST3 factory");
     PFactoryInfo factoryInfo {};
     checks.ok (owner.factory->getFactoryInfo (&factoryInfo), "Read factory metadata");
-    checks.require (factoryInfo.vendor[0] != '\0', "Factory exposes its vendor");
+    checks.require (std::strcmp (factoryInfo.vendor, "RottingPitStudio") == 0,
+                    "Factory vendor is RottingPitStudio");
 
     PClassInfo effectClass {};
     bool found = false;
@@ -251,7 +252,7 @@ void checkPlugin (Checks& checks, NativeModule& module)
         }
     }
     checks.require (found, "Factory contains an audio module class");
-    checks.require (std::strcmp (effectClass.name, "DualIR") == 0, "Audio module is named DualIR");
+    checks.require (std::strcmp (effectClass.name, "RottingIR") == 0, "Audio module is named RottingIR");
 
     Instance plugin;
     checks.ok (owner.factory->createInstance (effectClass.cid, componentIid,

@@ -24,11 +24,11 @@ set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(JUCE)
 
 juce_add_plugin(DualIR
-    COMPANY_NAME "DualIR"
+    COMPANY_NAME "RottingPitStudio"
     BUNDLE_ID "com.dualir.plugin"
     PLUGIN_MANUFACTURER_CODE Dlir
     PLUGIN_CODE DuIR
-    PRODUCT_NAME "DualIR"
+    PRODUCT_NAME "RottingIR"
     DESCRIPTION "Dual impulse response cabinet loader"
     FORMATS VST3
     VST3_CATEGORIES Fx Filter

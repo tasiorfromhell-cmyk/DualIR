@@ -1,4 +1,4 @@
-# DualIR
+# RottingIR
 
 DualIR to wtyczka VST3 C++20/JUCE z dwoma równoległymi silnikami konwolucji do odpowiedzi impulsowych kolumn gitarowych. Obsługuje mono i stereo, automatyzację parametrów oraz zapis IR wewnątrz stanu projektu DAW.
 
@@ -38,14 +38,14 @@ ctest --preset windows-debug
 Pakiet Release:
 
 ```text
-build/windows-vs2022/DualIR_artefacts/Release/VST3/DualIR.vst3/
+build/windows-vs2022/DualIR_artefacts/Release/VST3/RottingIR.vst3/
 ```
 
-Kopiuj cały katalog `DualIR.vst3`, wraz z `Contents` i pozostałą zawartością. Build nie instaluje automatycznie wtyczki w katalogach systemowych. W Visual Studio można też otworzyć wygenerowany `build/windows-vs2022/DualIR.sln`.
+Kopiuj cały katalog `RottingIR.vst3`, wraz z `Contents` i pozostałą zawartością. Build nie instaluje automatycznie wtyczki w katalogach systemowych. W Visual Studio można też otworzyć wygenerowany `build/windows-vs2022/DualIR.sln`.
 
 ## Sprawdzenie w REAPER
 
-1. Zamknij REAPER i skopiuj cały pakiet `DualIR.vst3` do `%LOCALAPPDATA%\Programs\Common\VST3` lub własnego katalogu VST3.
+1. Zamknij REAPER i skopiuj cały pakiet `RottingIR.vst3` do `%LOCALAPPDATA%\Programs\Common\VST3` lub własnego katalogu VST3.
 2. W **Preferences → Plug-ins → VST** dodaj użyty katalog do ścieżek skanowania i wykonaj ponowne skanowanie.
 3. Dodaj **VST3: DualIR** do ścieżki. Bez IR sprawdź przepuszczanie sygnału; następnie wczytaj IR do A i B i sprawdź zmianę brzmienia, blend, gain, mute, polaryzację i bypass.
 4. Sprawdź otwieranie i skalowanie edytora oraz pracę z sygnałem mono i stereo.
@@ -91,13 +91,13 @@ ctest --preset linux-debug
 Ścieżka pakietu Debug w tym środowisku:
 
 ```text
-/workspace/DualIR/build/linux-debug/DualIR_artefacts/Debug/VST3/DualIR.vst3
+/workspace/DualIR/build/linux-debug/DualIR_artefacts/Debug/VST3/RottingIR.vst3
 ```
 
 Ścieżka pakietu Release:
 
 ```text
-/workspace/DualIR/build/linux-release/DualIR_artefacts/Release/VST3/DualIR.vst3
+/workspace/DualIR/build/linux-release/DualIR_artefacts/Release/VST3/RottingIR.vst3
 ```
 
 To pakiet dla Linuksa. Nie jest binarną wtyczką Windows.
@@ -125,7 +125,7 @@ CTest obejmuje:
 
 Test edytora sprawdza także powiązania kontrolek z parametrami, drop rzeczywistych plików WAV i usuwanie IR. Test integracji obejmuje poprawne ustawienia mute, gain i bypass od pierwszej próbki po przygotowaniu oraz przywołaniu stanu.
 
-Workflow **Windows x64 VST3** (`.github/workflows/windows.yml`) działa na `windows-latest`, pobiera pełną historię repozytorium i jawnie wybiera Visual Studio 2022 oraz toolset v143. Gdy obraz runnera nie ma VS2022, instaluje oficjalne Build Tools po sprawdzeniu podpisu Microsoft. Buduje Release, uruchamia cały CTest i sprawdza nagłówki PE/AMD64 wygenerowanej biblioteki. ZIP obejmuje cały katalog `DualIR.vst3`, także pliki ukryte. W razie błędu zachowuje dostępne logi CMake/CTest. Sam plik workflow ani walidacja actionlint nie potwierdzają wykonania Windows build.
+Workflow **Windows x64 VST3** (`.github/workflows/windows.yml`) działa na `windows-latest`, pobiera pełną historię repozytorium i jawnie wybiera Visual Studio 2022 oraz toolset v143. Gdy obraz runnera nie ma VS2022, instaluje oficjalne Build Tools po sprawdzeniu podpisu Microsoft. Buduje Release, uruchamia cały CTest i sprawdza nagłówki PE/AMD64 wygenerowanej biblioteki. ZIP obejmuje cały katalog `RottingIR.vst3`, także pliki ukryte. W razie błędu zachowuje dostępne logi CMake/CTest. Sam plik workflow ani walidacja actionlint nie potwierdzają wykonania Windows build.
 
 ### Uruchomienie i pobranie Windows build w GitHub
 
@@ -134,9 +134,9 @@ Kod projektu, w tym `.github/workflows/windows.yml`, musi znajdować się w repo
 1. Otwórz repozytorium `tasiorfromhell-cmyk/DualIR` w GitHub i wybierz **Actions**. Jeśli GitHub wyświetli prośbę o włączenie Actions, włącz je.
 2. Po lewej wybierz **Windows x64 VST3**, następnie **Run workflow**, gałąź zawierającą projekt (np. `main`) i zielony przycisk **Run workflow**. Workflow uruchamia się też automatycznie przy pushu.
 3. Otwórz nowy przebieg i poczekaj na zielony wynik zadania **VS2022 x64 Release**. Przy błędzie otwórz nieudany krok, aby przeczytać log.
-4. Na stronie pomyślnego przebiegu przewiń do **Artifacts** i kliknij **DualIR-Windows-x64-VST3**. Pobieranie wymaga zalogowania do GitHub.
-5. Rozpakuj pobrany ZIP artefaktu, a następnie zawarty w nim `DualIR-Windows-x64-VST3.zip`. Wewnętrzny ZIP zawiera katalog `DualIR.vst3/` z binarną wtyczką `DualIR.vst3/Contents/x86_64-win/DualIR.vst3`.
-6. Do REAPER zainstaluj cały katalog `DualIR.vst3`, nie samą wewnętrzną bibliotekę. Instrukcja skanowania znajduje się wyżej.
+4. Na stronie pomyślnego przebiegu przewiń do **Artifacts** i kliknij **RottingIR-Windows-x64-VST3**. Pobieranie wymaga zalogowania do GitHub.
+5. Rozpakuj pobrany ZIP artefaktu, a następnie zawarty w nim `RottingIR-Windows-x64-VST3.zip`. Wewnętrzny ZIP zawiera katalog `RottingIR.vst3/` z binarną wtyczką `RottingIR.vst3/Contents/x86_64-win/RottingIR.vst3`.
+6. Do REAPER zainstaluj cały katalog `RottingIR.vst3`, nie samą wewnętrzną bibliotekę. Instrukcja skanowania znajduje się wyżej.
 
 ## Struktura i zależności
 
@@ -171,3 +171,9 @@ Stan projektu zapisuje ustawienie Link, oba foldery, ostatnio aktywny browser or
 oddzielne aktywne IR wraz z osadzonym audio. Starsze stany bez informacji o folderach
 przywracają domyślne Link ON. Wspólny folder korzysta z jednej listy wyników skanowania.
 Test `DualIR.IRBrowser` sprawdza synchronizację, niezależność, przełączanie i state restore.
+
+
+Nazwa produktu VST3: **RottingIR**. Developer: **RottingPitStudio**.
+Pakiet Windows nosi nazwę `RottingIR.vst3`, a ZIP CI: `RottingIR-Windows-x64-VST3.zip`.
+Identyfikatory VST3, identyfikatory parametrów i format stanu pozostają zgodne z DualIR.
+Stały końcowy trim −12 dB pozostaje aktywny.
