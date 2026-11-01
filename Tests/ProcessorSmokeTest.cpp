@@ -45,7 +45,7 @@ juce::AudioProcessor::BusesLayout makeLayout (const juce::AudioChannelSet& input
 
 float testSample (int channel, int sample)
 {
-    // Exactly representable binary fractions make an exact pass-through check valid.
+    // Deterministic samples verify the final trim in mono and stereo.
     return static_cast<float> (((sample * 7 + channel * 3) % 31) - 15) / 16.0f;
 }
 
@@ -72,12 +72,29 @@ void checkAudio (Checks& checks, DualIRAudioProcessor& processor, int channels,
         for (int sample = 0; sample < blockSize; ++sample)
         {
             const auto actual = buffer.getSample (channel, sample);
-            identical = identical && juce::exactlyEqual (actual, testSample (channel, sample));
+            identical = identical && std::abs (actual - testSample (channel, sample) * 0.2511886432f) < 1.0e-6f;
             finite = finite && std::isfinite (actual);
         }
 
-    checks.expect (identical, "Signal remains identical: " + description);
+    checks.expect (identical, "Signal has fixed -12 dB final trim: " + description);
     checks.expect (finite, "Signal contains no NaN or infinity: " + description);
+    const auto expectedPeak = blockSize > 0 ? buffer.getMagnitude (0, blockSize) : 0.0f;
+    checks.expect (std::abs (processor.getOutputPeak() - expectedPeak) < 1.0e-6f,
+                   "OUTPUT meter measures the trimmed host buffer: " + description);
+    if (blockSize > 0)
+        checks.expect (std::abs (processor.getOutputPeak() / processor.getInputPeak() - 0.2511886432f) < 1.0e-6f,
+                       "OUTPUT is exactly -12 dB relative to INPUT: " + description);
+    for (int channel = 0; channel < channels; ++channel)
+        for (int sample = 0; sample < blockSize; ++sample)
+            buffer.setSample (channel, sample, testSample (channel, sample));
+    processor.processBlockBypassed (buffer, midi);
+    bool bypassTrimmed = true;
+    for (int channel = 0; channel < channels; ++channel)
+        for (int sample = 0; sample < blockSize; ++sample)
+            bypassTrimmed = bypassTrimmed && std::abs (buffer.getSample (channel, sample)
+                - testSample (channel, sample) * 0.2511886432f) < 1.0e-6f;
+    checks.expect (bypassTrimmed, "Host bypass retains fixed final trim: " + description);
+
     checks.expect (midi.isEmpty(), "No MIDI events generated: " + description);
 
     buffer.clear();

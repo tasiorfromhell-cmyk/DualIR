@@ -53,7 +53,7 @@ void render (dualir::EngineSettings settings, bool a, bool b, float first, float
     settle (engine, settings, channels);
     auto audio = impulse (channels);
     engine.process (audio, settings);
-    response (audio, first, second, message);
+    response (audio, first * 0.2511886432f, second * 0.2511886432f, message);
 }
 }
 int main()
@@ -93,7 +93,7 @@ int main()
                 "Resampling preserves 10 ms impulse timing");
     }
     dualir::EngineSettings settings;
-    render (settings, false, false, 1.0f, 0.0f, "No IR is transparent");
+    render (settings, false, false, 1.0f, 0.0f, "No IR retains fixed -12 dB output trim");
     settings.blend = 0.95f;
     render (settings, true, false, 0.5f, 0.25f, "Only A has full weight; no dry leak");
     settings.blend = 0.05f;
@@ -130,10 +130,10 @@ int main()
         settings = {}; settle (engine, settings, 2);
         auto audio = impulse (2, 257); audio.addSample (0, 256, 1.0f); audio.addSample (1, 256, 1.0f);
         engine.process (audio, settings);
-        expect (std::abs (audio.getSample (0, 0) - 0.5f) < 1.0e-4f
-                && std::abs (audio.getSample (1, 256) - 0.5f) < 1.0e-4f, "Oversized block chunking");
+        expect (std::abs (audio.getSample (0, 0) - 0.5f * 0.2511886432f) < 1.0e-4f
+                && std::abs (audio.getSample (1, 256) - 0.5f * 0.2511886432f) < 1.0e-4f, "Oversized block chunking");
         audio.clear(); engine.process (audio, settings);
-        response (audio, 0.25f, 0.0f, "Tail survives oversized block boundary");
+        response (audio, 0.25f * 0.2511886432f, 0.0f, "Tail survives oversized block boundary");
     }
     std::cout << passed << '/' << passed + failed << " DSP checks passed\n";
     return failed == 0 ? 0 : 1;

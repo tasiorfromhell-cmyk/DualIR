@@ -123,7 +123,7 @@ bool matches (const juce::AudioBuffer<float>& actual,
         {
             const auto av = sample < a.getNumSamples() ? a.getSample (channel, sample) : 0.0f;
             const auto bv = sample < b.getNumSamples() ? b.getSample (channel, sample) : 0.0f;
-            const auto expected = av * gainA + bv * gainB;
+            const auto expected = (av * gainA + bv * gainB) * 0.2511886432f;
             const auto value = actual.getSample (channel, sample);
             if (! std::isfinite (value) || std::abs (value - expected) > tolerance)
                 return false;
@@ -304,8 +304,8 @@ int main()
     for (int channel = 0; channel < dry.getNumChannels(); ++channel)
         for (int sample = 0; sample < dry.getNumSamples(); ++sample)
             bypassIsDry = bypassIsDry && std::abs (dry.getSample (channel, sample)
-                                                  - (sample == 0 ? 1.0f : 0.0f)) < 0.00003f;
-    checks.expect (bypassIsDry, "Bypass returns dry audio independently of output gain");
+                                                  - (sample == 0 ? 0.2511886432f : 0.0f)) < 0.00003f;
+    checks.expect (bypassIsDry, "Bypass retains fixed -12 dB trim independently of output parameter");
 
     resetParameters (processor, checks);
     setParameter (processor, "aGain", 3.0f);
@@ -430,8 +430,8 @@ int main()
     for (int channel = 0; channel < cleared.getNumChannels(); ++channel)
         for (int sample = 0; sample < cleared.getNumSamples(); ++sample)
             clearIsDry = clearIsDry && std::abs (cleared.getSample (channel, sample)
-                                                - (sample == 0 ? 1.0f : 0.0f)) < 0.00003f;
-    checks.expect (clearIsDry, "Clearing both empty slots returns transparent dry audio");
+                                                - (sample == 0 ? 0.2511886432f : 0.0f)) < 0.00003f;
+    checks.expect (clearIsDry, "Clearing both slots retains fixed -12 dB output trim");
 
     std::cout << checks.total - checks.failed << '/' << checks.total << " checks passed\n";
     return checks.failed == 0 ? 0 : 1;

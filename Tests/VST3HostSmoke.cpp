@@ -205,9 +205,9 @@ void checkAudioLayout (Checks& checks, Instance& plugin, int channels)
             {
                 const auto expected = static_cast<float> ((sample * 3 + channel * 5) % 29 - 14) / 32.0f;
                 const auto value = output[static_cast<size_t> (channel)][static_cast<size_t> (sample)];
-                transparent = transparent && std::isfinite (value) && std::abs (value - expected) < 1.0e-6f;
+                transparent = transparent && std::isfinite (value) && std::abs (value - expected * 0.2511886432f) < 1.0e-6f;
             }
-        checks.require (transparent, "Empty IR slots pass audio transparently through native VST3: " + label);
+        checks.require (transparent, "Native VST3 applies fixed -12 dB output trim with empty IR slots: " + label);
     }
 
     for (auto& channel : input)

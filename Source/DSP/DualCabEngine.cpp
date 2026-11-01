@@ -120,6 +120,8 @@ void DualCabEngine::processChunk (juce::AudioBuffer<float>& buffer, int offset, 
         finiteClamp (settings.outputDb, 0.0f, -24.0f, 12.0f)));
     bypassMix.setTargetValue (settings.bypass ? 1.0f : 0.0f);
 
+    // Fixed final trim applies to the complete mix, including bypass.
+    const float outputTrim = juce::Decibels::decibelsToGain (-12.0f);
     for (int sample = 0; sample < count; ++sample)
     {
         const auto a = gainA.getNextValue();
@@ -134,7 +136,7 @@ void DualCabEngine::processChunk (juce::AudioBuffer<float>& buffer, int offset, 
             const auto original = output[sample];
             const auto wet = (aView.getSample (channel, sample) * a
                             + bView.getSample (channel, sample) * b + original * dry) * out;
-            output[sample] = wet * (1.0f - bypass) + original * bypass;
+            output[sample] = (wet * (1.0f - bypass) + original * bypass) * outputTrim;
         }
     }
 }
