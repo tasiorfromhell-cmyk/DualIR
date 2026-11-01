@@ -347,7 +347,7 @@ int main (int argc, char* argv[])
     checks.expect (juce::exactlyEqual (processor.getTailLengthSeconds(), 2.0),
                    "Reports the supported two-second IR tail");
     checks.expect (processor.hasEditor(), "Advertises a custom editor");
-    checks.expect (processor.getName() == "DualIR", "Reports expected plug-in name");
+    checks.expect (processor.getName() == "RottingIR", "Reports expected plug-in name");
     checks.expect (processor.getNumPrograms() == 1, "Exposes one default program");
     checks.expect (processor.getCurrentProgram() == 0, "Selects the default program");
 
@@ -363,7 +363,7 @@ int main (int argc, char* argv[])
     checks.expect (factoryProcessor != nullptr, "Plug-in factory creates a processor");
     if (factoryProcessor != nullptr)
     {
-        checks.expect (factoryProcessor->getName() == "DualIR", "Factory creates DualIR");
+        checks.expect (factoryProcessor->getName() == "RottingIR", "Factory creates RottingIR");
         checks.expect (factoryProcessor->getTotalNumInputChannels() == 2
                        && factoryProcessor->getTotalNumOutputChannels() == 2,
                        "Factory defaults to stereo input and output");

@@ -240,7 +240,7 @@ void MainPanel::paint (juce::Graphics& g)
     }
     g.setColour (amber);
     g.setFont (juce::Font (juce::FontOptions { 31.0f }).boldened());
-    g.drawText ("DualIR", 26, 16, 170, 39, juce::Justification::centredLeft);
+    g.drawText ("RottingIR", 26, 16, 170, 39, juce::Justification::centredLeft);
     g.setColour (subdued); g.setFont (juce::Font (juce::FontOptions { 12.0f }));
     g.drawText ("DUAL CABINET CONVOLUTION", 198, 25, 300, 20, juce::Justification::centredLeft);
     g.drawText ("A", 30, 411, 20, 25, juce::Justification::centredLeft);
