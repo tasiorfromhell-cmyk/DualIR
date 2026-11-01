@@ -14,7 +14,7 @@ IR może mieć jeden lub dwa kanały, częstotliwość 8–384 kHz, długość d
 
 Dekodowanie plików i przygotowanie nowych filtrów odbywa się w tle. Przetwarzanie audio ma zerową latencję algorytmiczną; zmiany poziomów, miksu i bypassu są wygładzane przez 20 ms, a JUCE płynnie przełącza filtry po zakończeniu ich przygotowania. Nieudane wczytanie pokazuje błąd i zachowuje poprzedni działający IR.
 
-Stan wtyczki zawiera parametry i oba IR w bezstratnym formacie float32 WAV. Po zapisaniu projektu lub presetu oryginalne ścieżki plików nie są potrzebne do odtworzenia brzmienia. Edytor otwiera się w rozmiarze 800 × 500 i skaluje w zakresie 640 × 400–1600 × 1000.
+Stan wtyczki zawiera parametry i oba IR w bezstratnym formacie float32 WAV. Po zapisaniu projektu lub presetu oryginalne ścieżki plików nie są potrzebne do odtworzenia brzmienia. Edytor otwiera się w rozmiarze 800 × 640 i skaluje w zakresie 800 × 640–1600 × 1280.
 
 ## Windows x64 — Visual Studio 2022
 
@@ -107,7 +107,7 @@ To pakiet dla Linuksa. Nie jest binarną wtyczką Windows.
 | Element | Status |
 | --- | --- |
 | Linux x64: konfiguracja CMake i build VST3 Debug oraz Release | VERIFIED |
-| Pełny CTest: 6/6 zestawów w Debug i Release | VERIFIED |
+| Pełny CTest: 7/7 zestawów w Debug i Release | VERIFIED |
 | DSP, loader IR i integracja procesora | VERIFIED |
 | Ładowanie natywnego VST3 i audio mono/stereo w niezależnym test-hoście | VERIFIED |
 | Kompilacja Windows x64 / MSVC | NOT VERIFIED |
@@ -156,3 +156,18 @@ CMakePresets.json              # VS2022 x64 i Linux/Ninja
 CMake pobiera JUCE 8.0.12 z oficjalnego repozytorium, przypięte do commitu `29396c22c93392d6738e021b83196283d6e4d850`. Archiwum jest sprawdzane sumą SHA-256 `97cc01e0fe15278f6edadc895a3cf0aac2fd98bcd023823384d5ca7025beb91c`, z włączoną weryfikacją TLS. SDK VST3 jest dołączone do JUCE; Projucer ani oddzielna instalacja SDK nie są potrzebne.
 
 JUCE jest dostępne na licencji AGPLv3 lub komercyjnej: [warunki JUCE](https://juce.com/legal/juce-8-licence/). Dodanie JUCE nie ustala automatycznie licencji pozostałego kodu DualIR.
+
+
+## Foldery browserów IR
+
+W SETTINGS opcja **Link IR Browser Folders** jest domyślnie włączona. Browse Folder,
+Load IR i przeciągnięcie pliku ustawiają folder obu browserów. Każdy kabinet zachowuje
+własny aktywny IR; zmiana folderu nigdy nie ładuje pliku w drugim kabinecie.
+Lista rozwijana w każdym browserze pozwala wybrać plik WAV/AIFF z bieżącego folderu.
+
+Po wyłączeniu Link foldery działają niezależnie. Ponowne włączenie wybiera folder
+ostatnio aktywnie zmienianego browsera (CAB A, jeżeli brak tej informacji).
+Stan projektu zapisuje ustawienie Link, oba foldery, ostatnio aktywny browser oraz
+oddzielne aktywne IR wraz z osadzonym audio. Starsze stany bez informacji o folderach
+przywracają domyślne Link ON. Wspólny folder korzysta z jednej listy wyników skanowania.
+Test `DualIR.IRBrowser` sprawdza synchronizację, niezależność, przełączanie i state restore.

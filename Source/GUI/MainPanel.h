@@ -2,7 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 class DualIRAudioProcessor;
-class MainPanel final : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer
+class MainPanel final : public juce::Component, public juce::FileDragAndDropTarget, private juce::Timer, private juce::ChangeListener
 {
 public:
     explicit MainPanel (DualIRAudioProcessor&);
@@ -14,11 +14,14 @@ public:
 private:
     class SlotPanel;
     void timerCallback() override;
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
     static bool isAudioFile (const juce::String&);
     DualIRAudioProcessor& owner;
     juce::LookAndFeel_V4 lookAndFeel;
     std::unique_ptr<SlotPanel> slotA, slotB;
     juce::Slider blend, output;
+    juce::ToggleButton linkFolders { "Link IR Browser Folders" };
+    juce::Label settingsLabel;
     juce::ToggleButton bypass { "BYPASS" };
     juce::Label blendLabel, outputLabel, routingLabel;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> blendAttachment, outputAttachment;

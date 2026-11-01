@@ -6,9 +6,9 @@ DualIRAudioProcessorEditor::DualIRAudioProcessorEditor (DualIRAudioProcessor& au
     setOpaque (true);
     addAndMakeVisible (mainPanel);
     setResizable (true, true);
-    setResizeLimits (640, 400, 1600, 1000);
-    getConstrainer()->setFixedAspectRatio (1.6);
-    setSize (800, 500);
+    setResizeLimits (800, 640, 1600, 1280);
+    getConstrainer()->setFixedAspectRatio (1.25);
+    setSize (800, 640);
 }
 void DualIRAudioProcessorEditor::paint (juce::Graphics& graphics)
 {
@@ -16,7 +16,7 @@ void DualIRAudioProcessorEditor::paint (juce::Graphics& graphics)
 }
 void DualIRAudioProcessorEditor::resized()
 {
-    mainPanel.setBounds (0, 0, 800, 500);
+    mainPanel.setBounds (0, 0, 800, 640);
     mainPanel.setTransform (juce::AffineTransform::scale (static_cast<float> (getWidth()) / 800.0f,
-                                                        static_cast<float> (getHeight()) / 500.0f));
+                                                        static_cast<float> (getHeight()) / 640.0f));
 }

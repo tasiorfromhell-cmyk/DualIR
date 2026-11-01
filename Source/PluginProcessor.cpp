@@ -161,10 +161,13 @@ void DualIRAudioProcessor::enqueue (int slotIndex, Request request, std::optiona
 }
 void DualIRAudioProcessor::requestIRLoad (int slot, const juce::File& file)
 {
+    if (! validSlot (slot)) return;
+    irBrowsers.onFolderChanged (slot, file.getParentDirectory());
     Request request;
     request.kind = RequestKind::file;
     request.file = file;
     request.stored.name = file.getFileName();
+    request.stored.path = file.getFullPathName();
     enqueue (slot, std::move (request), std::nullopt);
 }
 void DualIRAudioProcessor::clearIR (int slot)
@@ -233,6 +236,7 @@ void DualIRAudioProcessor::run()
             else if (result.succeeded())
             {
                 slot.status.name = request->stored.name;
+                slot.status.path = request->stored.path;
                 slot.status.error.clear();
                 slot.status.loaded = true;
                 slot.status.sampleRate = result.sampleRate;
@@ -256,6 +260,7 @@ void DualIRAudioProcessor::getStateInformation (juce::MemoryBlock& destinationDa
 {
     auto state = parameters.copyState();
     state.setProperty ("schemaVersion", stateVersion, nullptr);
+    irBrowsers.save (state);
     for (int child = state.getNumChildren(); --child >= 0;)
         if (state.getChild (child).hasType ("IR"))
             state.removeChild (child, nullptr);
@@ -272,6 +277,7 @@ void DualIRAudioProcessor::getStateInformation (juce::MemoryBlock& destinationDa
         juce::ValueTree node ("IR");
         node.setProperty ("slot", slot, nullptr);
         node.setProperty ("name", stored.name, nullptr);
+        state.setProperty (slot == 0 ? "activeIRA" : "activeIRB", stored.path, nullptr);
         node.setProperty ("data", juce::Base64::toBase64 (stored.encoded.getData(),
                                                         stored.encoded.getSize()), nullptr);
         state.addChild (node, -1, nullptr);
@@ -305,6 +311,7 @@ void DualIRAudioProcessor::setStateInformation (const void* data, int sizeInByte
         seen[index] = true;
         auto& stored = restored[index];
         stored.name = node.getProperty ("name").toString().substring (0, 512);
+        stored.path = state.getProperty (slotIndex == 0 ? "activeIRA" : "activeIRB").toString();
         const auto encoded = node.getProperty ("data").toString();
         constexpr auto maxEncodedCharacters = ((dualir::IRLoader::maxEncodedBytes + 2u) / 3u) * 4u;
         if (encoded.length() > static_cast<int> (maxEncodedCharacters) || encoded.length() % 4 != 0)
@@ -318,6 +325,7 @@ void DualIRAudioProcessor::setStateInformation (const void* data, int sizeInByte
             return;
         state.removeChild (child, nullptr);
     }
+    irBrowsers.restore (state);
     parameters.replaceState (state);
     for (int slot = 0; slot < 2; ++slot)
     {

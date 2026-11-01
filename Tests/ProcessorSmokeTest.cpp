@@ -122,7 +122,7 @@ void checkEditorControls (Checks& checks, juce::AudioProcessorEditor& editor,
                           DualIRAudioProcessor& processor)
 {
     for (const auto* id : { "aLoad", "bLoad", "aClear", "bClear", "aEnabled", "bEnabled",
-                            "aInvert", "bInvert", "bypass" })
+                            "aInvert", "bInvert", "bypass", "aBrowseFolder", "bBrowseFolder", "linkFolders" })
         checks.expect (dynamic_cast<juce::Button*> (findComponent (editor, id)) != nullptr,
                        "Editor contains working button " + std::string (id));
 
@@ -171,7 +171,20 @@ void checkEditorControls (Checks& checks, juce::AudioProcessorEditor& editor,
                        "Host parameter changes update the gain slider");
     }
 
-    editor.setSize (800, 500);
+    auto* link = dynamic_cast<juce::ToggleButton*> (findComponent (editor, "linkFolders"));
+    auto* listA = dynamic_cast<juce::ComboBox*> (findComponent (editor, "aFiles"));
+    auto* listB = dynamic_cast<juce::ComboBox*> (findComponent (editor, "bFiles"));
+    checks.expect (link != nullptr && listA != nullptr && listB != nullptr,
+                   "Editor exposes folder linking and independent file lists");
+    if (link != nullptr)
+    {
+        link->setToggleState (false, juce::dontSendNotification); link->onClick();
+        checks.expect (! processor.irBrowsers.snapshot().linkFolders, "Settings disables link immediately");
+        link->setToggleState (true, juce::dontSendNotification); link->onClick();
+        checks.expect (processor.irBrowsers.snapshot().linkFolders, "Settings enables link immediately");
+    }
+
+    editor.setSize (800, 640);
     auto* panel = findComponent (editor, "mainPanel");
     auto* slotA = findComponent (editor, "aSlot");
     auto* slotB = findComponent (editor, "bSlot");
@@ -240,25 +253,25 @@ void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
     if (editor == nullptr)
         return;
 
-    checks.expect (editor->getWidth() == 800 && editor->getHeight() == 500,
-                   "Editor opens at 800 x 500");
+    checks.expect (editor->getWidth() == 800 && editor->getHeight() == 640,
+                   "Editor opens at 800 x 640");
     checks.expect (editor->isResizable(), "Editor supports resizing");
 
     const auto* constrainer = editor->getConstrainer();
     checks.expect (constrainer != nullptr, "Editor has a resize constrainer");
     if (constrainer != nullptr)
     {
-        checks.expect (constrainer->getMinimumWidth() == 640
-                       && constrainer->getMinimumHeight() == 400,
-                       "Editor minimum dimensions are 640 x 400");
+        checks.expect (constrainer->getMinimumWidth() == 800
+                       && constrainer->getMinimumHeight() == 640,
+                       "Editor minimum dimensions are 800 x 640");
         checks.expect (constrainer->getMaximumWidth() == 1600
-                       && constrainer->getMaximumHeight() == 1000,
-                       "Editor maximum dimensions are 1600 x 1000");
+                       && constrainer->getMaximumHeight() == 1280,
+                       "Editor maximum dimensions are 1600 x 1280");
     }
 
-    for (const auto size : std::array { juce::Point<int> { 640, 400 },
-                                       juce::Point<int> { 800, 500 },
-                                       juce::Point<int> { 1600, 1000 } })
+    for (const auto size : std::array { juce::Point<int> { 800, 640 },
+                                       juce::Point<int> { 800, 640 },
+                                       juce::Point<int> { 1600, 1280 } })
     {
         const auto description = std::to_string (size.x) + " x " + std::to_string (size.y);
         editor->setSize (size.x, size.y);
@@ -279,7 +292,7 @@ void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
                        "Editor paints opaque background and content at " + description);
 
         const auto snapshotPath = juce::SystemStats::getEnvironmentVariable ("DUALIR_EDITOR_SNAPSHOT", {});
-        if (size.x == 800 && size.y == 500 && snapshotPath.isNotEmpty())
+        if (size.x == 800 && size.y == 640 && snapshotPath.isNotEmpty())
         {
             juce::MemoryOutputStream pngData;
             juce::PNGImageFormat png;

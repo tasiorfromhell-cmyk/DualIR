@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "DSP/DualCabEngine.h"
+#include "IR/IRBrowserCoordinator.h"
 #include <array>
 #include <atomic>
 #include <optional>
@@ -36,7 +37,7 @@ public:
 
     struct IRStatus
     {
-        juce::String name, error;
+        juce::String name, error, path;
         bool loaded = false, loading = false;
         double sampleRate = 0.0;
         int numSamples = 0, numChannels = 0;
@@ -44,6 +45,7 @@ public:
     // Message/host-state thread APIs: never call these from processBlock.
     void requestIRLoad (int slot, const juce::File& file);
     void clearIR (int slot);
+    IRBrowserCoordinator irBrowsers;
     IRStatus getIRStatus (int slot) const;
     float getInputPeak() const noexcept;
     float getOutputPeak() const noexcept;
@@ -52,7 +54,7 @@ public:
 
 private:
     enum class RequestKind { file, encoded, clear };
-    struct StoredIR { juce::MemoryBlock encoded; juce::String name; };
+    struct StoredIR { juce::MemoryBlock encoded; juce::String name, path; };
     struct Request
     {
         RequestKind kind = RequestKind::clear;

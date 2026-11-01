@@ -53,6 +53,7 @@ target_sources(DualIR PRIVATE
     Source/DSP/DualCabEngine.h
     Source/IR/IRLoader.cpp
     Source/IR/IRLoader.h
+    Source/IR/IRBrowserCoordinator.h
     Source/GUI/MainPanel.cpp
     Source/GUI/MainPanel.h
 )
@@ -75,7 +76,7 @@ if(BUILD_TESTING)
     target_include_directories(DualIRProcessorTests PRIVATE Source "${juce_SOURCE_DIR}/modules")
     target_compile_definitions(DualIRProcessorTests PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
     target_link_libraries(DualIRProcessorTests PRIVATE DualIR)
-    foreach(test_name IN ITEMS DSP IRLoader PluginIntegration)
+    foreach(test_name IN ITEMS DSP IRLoader PluginIntegration IRBrowser)
         add_executable(DualIR${test_name}Tests Tests/${test_name}Tests.cpp)
         target_include_directories(DualIR${test_name}Tests PRIVATE Source "${juce_SOURCE_DIR}/modules")
         target_compile_definitions(DualIR${test_name}Tests PRIVATE JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1)
