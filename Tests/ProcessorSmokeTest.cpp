@@ -258,6 +258,10 @@ void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
 
     for (const auto size : std::array { juce::Point<int> { 640, 400 },
                                        juce::Point<int> { 800, 500 },
+                                       juce::Point<int> { 1000, 625 },
+                                       juce::Point<int> { 1200, 750 },
+                                       juce::Point<int> { 1400, 875 },
+                                       juce::Point<int> { 1136, 710 },
                                        juce::Point<int> { 1600, 1000 } })
     {
         const auto description = std::to_string (size.x) + " x " + std::to_string (size.y);
@@ -279,12 +283,13 @@ void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
                        "Editor paints opaque background and content at " + description);
 
         const auto snapshotPath = juce::SystemStats::getEnvironmentVariable ("DUALIR_EDITOR_SNAPSHOT", {});
-        if (size.x == 800 && size.y == 500 && snapshotPath.isNotEmpty())
+        if (snapshotPath.isNotEmpty())
         {
             juce::MemoryOutputStream pngData;
             juce::PNGImageFormat png;
             const auto encoded = png.writeImageToStream (snapshot, pngData);
-            checks.expect (encoded && juce::File (snapshotPath).replaceWithData (
+            checks.expect (encoded && juce::File (snapshotPath + "-" + juce::String (size.x) + "x"
+                                              + juce::String (size.y) + ".png").replaceWithData (
                                pngData.getData(), pngData.getDataSize()),
                            "Write requested editor snapshot");
         }

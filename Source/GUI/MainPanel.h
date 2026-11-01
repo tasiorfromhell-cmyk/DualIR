@@ -17,6 +17,7 @@ private:
     static bool isAudioFile (const juce::String&);
     DualIRAudioProcessor& owner;
     juce::LookAndFeel_V4 lookAndFeel;
+    juce::Image backgroundArt;
     std::unique_ptr<SlotPanel> slotA, slotB;
     juce::Slider blend, output;
     juce::ToggleButton bypass { "BYPASS" };

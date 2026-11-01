@@ -1,4 +1,5 @@
 #include "MainPanel.h"
+#include <DualIRGuiAssets.h>
 #include "../PluginProcessor.h"
 #include <cmath>
 
@@ -116,7 +117,7 @@ public:
     void paint (juce::Graphics& g) override
     {
         const auto bounds = getLocalBounds().toFloat().reduced (0.5f);
-        g.setColour (card); g.fillRoundedRectangle (bounds, 12.0f);
+        g.setColour (card.withAlpha (0.72f)); g.fillRoundedRectangle (bounds, 12.0f);
         g.setColour (border); g.drawRoundedRectangle (bounds, 12.0f, 1.0f);
         g.setColour (accent); g.fillRoundedRectangle (20.0f, 20.0f, 3.0f, 23.0f, 1.5f);
     }
@@ -165,6 +166,13 @@ private:
 MainPanel::MainPanel (DualIRAudioProcessor& p) : owner (p)
 {
     setComponentID ("mainPanel"); setOpaque (true);
+    // Decode once, retain the original pixels, and omit the heavy outer frame.
+    const auto source = juce::ImageCache::getFromMemory
+        (DualIRGuiAssets::logo_jpg, DualIRGuiAssets::logo_jpgSize);
+    if (source.isValid())
+        backgroundArt = source.getClippedImage ({ source.getWidth() * 17 / 100,
+            source.getHeight() * 15 / 100, source.getWidth() * 66 / 100,
+            source.getHeight() * 72 / 100 });
     lookAndFeel.setColour (juce::Slider::thumbColourId, text);
     lookAndFeel.setColour (juce::Slider::textBoxTextColourId, text);
     lookAndFeel.setColour (juce::Slider::textBoxBackgroundColourId, background);
@@ -205,7 +213,17 @@ MainPanel::MainPanel (DualIRAudioProcessor& p) : owner (p)
 MainPanel::~MainPanel() { stopTimer(); setLookAndFeel (nullptr); }
 void MainPanel::paint (juce::Graphics& g)
 {
-    g.fillAll (background); g.setColour (amber);
+    g.fillAll (background);
+    if (backgroundArt.isValid())
+    {
+        juce::Graphics::ScopedSaveState state (g);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        g.setOpacity (0.26f);
+        // MainPanel's transform scales artwork and controls together at every size.
+        g.drawImageWithin (backgroundArt, 100, 14, 600, 438,
+                           juce::RectanglePlacement::centred);
+    }
+    g.setColour (amber);
     g.setFont (juce::Font (juce::FontOptions { 31.0f }).boldened());
     g.drawText ("DualIR", 26, 16, 170, 39, juce::Justification::centredLeft);
     g.setColour (subdued); g.setFont (juce::Font (juce::FontOptions { 12.0f }));

@@ -42,6 +42,12 @@ juce_add_plugin(DualIR
     NEEDS_WEB_BROWSER FALSE
 )
 
+juce_add_binary_data(DualIRGuiAssets
+    HEADER_NAME DualIRGuiAssets.h
+    NAMESPACE DualIRGuiAssets
+    SOURCES logo.jpg
+)
+
 target_sources(DualIR PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginProcessor.h
@@ -65,7 +71,7 @@ if(MSVC)
     target_compile_options(DualIR PUBLIC /utf-8)
 endif()
 target_link_libraries(DualIR
-    PRIVATE juce::juce_audio_processors juce::juce_gui_basics juce::juce_dsp juce::juce_audio_formats
+    PRIVATE DualIRGuiAssets juce::juce_audio_processors juce::juce_gui_basics juce::juce_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags
 )
 
