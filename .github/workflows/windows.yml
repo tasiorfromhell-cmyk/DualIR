@@ -2,6 +2,8 @@ name: Windows x64 VST3
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -12,6 +14,8 @@ jobs:
   build:
     name: VS2022 x64 Release
     runs-on: windows-latest
+    permissions:
+      contents: write
     timeout-minutes: 45
     defaults:
       run:
@@ -23,6 +27,21 @@ jobs:
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
+
+      - name: Validate version and tag
+        id: version
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+            throw 'VERSION must use MAJOR.MINOR.PATCH without leading zeros.'
+          }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Tag and VERSION do not match.'
+          }
+          if (-not (Select-String -Path CHANGELOG.md -SimpleMatch "## v$version" -Quiet)) {
+            throw 'Version is missing from CHANGELOG.md.'
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
 
       - name: Select Visual Studio 2022 and v143 tools
         run: |
@@ -90,7 +109,7 @@ jobs:
             throw 'RottingIR.vst3 is not a valid AMD64 Windows binary.'
           }
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE 'dist/RottingIR-Windows-x64-VST3.zip'
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE "dist/RottingIR-v${{ steps.version.outputs.value }}-Windows-x64.zip"
           if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [System.IO.Compression.ZipFile]::CreateFromDirectory(
@@ -111,10 +130,46 @@ jobs:
       - name: Upload Windows VST3 ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RottingIR-Windows-x64-VST3
-          path: dist/RottingIR-Windows-x64-VST3.zip
+          name: RottingIR-v${{ steps.version.outputs.value }}-Windows-x64
+          path: dist/RottingIR-v${{ steps.version.outputs.value }}-Windows-x64.zip
           if-no-files-found: error
           compression-level: 0
+
+      - name: Publish new immutable version after successful build and tests
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "v$env:RELEASE_VERSION"
+          $repo = $env:GITHUB_REPOSITORY
+          $existing = gh release list --repo $repo --limit 1000 --json tagName --jq ".[].tagName"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing releases.' }
+          if ($tag -in $existing) {
+            Write-Host "Release $tag already exists; preserving it and all its assets."
+            exit 0
+          }
+          git fetch origin --tags
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect tags.' }
+          $tagCommit = git rev-parse --verify "refs/tags/$tag^{commit}" 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ($tagCommit.Trim() -ne $env:GITHUB_SHA) { throw 'Existing tag points to another commit.' }
+          } else {
+            gh api --method POST "repos/$repo/git/refs" -f "ref=refs/tags/$tag" -f "sha=$env:GITHUB_SHA"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create version tag; nothing published.' }
+          }
+          $log = Get-Content CHANGELOG.md -Raw
+          $section = [regex]::Match($log, "(?ms)^## $([regex]::Escape($tag))\s*\r?\n(.*?)(?=^## |\z)")
+          if (-not $section.Success) { throw 'Release notes not found.' }
+          $notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $section.Groups[1].Value.Trim() | Set-Content -Path $notes -Encoding utf8
+          gh release create $tag --repo $repo --verify-tag --draft --title "RottingIR $tag" --notes-file $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }
+          gh release upload $tag "dist/RottingIR-$tag-Windows-x64.zip" --repo $repo
+          if ($LASTEXITCODE -ne 0) { throw 'Asset upload failed; release remains draft.' }
+          gh release edit $tag --repo $repo --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Publication failed; release remains draft.' }
 
       - name: Preserve failure logs
         if: failure()
