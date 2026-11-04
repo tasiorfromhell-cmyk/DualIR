@@ -23,7 +23,7 @@ struct EngineSettings
 
     A single populated slot receives the full wet signal; two populated slots
     use linear A/B weights. Empty slots cannot leak an unfiltered dry signal into
-    a loaded cabinet. With no IRs, audio passes through unchanged. Bypass routes
+    a loaded cabinet. With no IRs, audio passes through the calibrated output stage. Bypass routes
     the unmodified input around both cabinet and output gain stages.
 */
 class DualCabEngine final

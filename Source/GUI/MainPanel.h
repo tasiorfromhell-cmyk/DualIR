@@ -21,6 +21,7 @@ private:
     std::unique_ptr<SlotPanel> slotA, slotB;
     juce::Slider blend, output;
     juce::ToggleButton bypass { "BYPASS" };
+    juce::ToggleButton linkFolders { "Link IR Browser Folders" };
     juce::Label blendLabel, outputLabel, routingLabel;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> blendAttachment, outputAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;

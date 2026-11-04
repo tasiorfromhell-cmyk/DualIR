@@ -41,6 +41,15 @@ jobs:
           if (-not (Select-String -Path CHANGELOG.md -SimpleMatch "## v$version" -Quiet)) {
             throw 'Version is missing from CHANGELOG.md.'
           }
+          if ($env:GITHUB_REF -eq 'refs/heads/main') {
+            $versionTags = @(git tag --list "v$version")
+            if ($versionTags.Count -gt 0) {
+              $tagCommit = git rev-parse "refs/tags/v$version^{commit}"
+              if ($tagCommit.Trim() -ne $env:GITHUB_SHA) {
+                throw 'This version already has a tag. Bump VERSION and update CHANGELOG for the new change.'
+              }
+            }
+          }
           "value=$version" >> $env:GITHUB_OUTPUT
 
       - name: Select Visual Studio 2022 and v143 tools

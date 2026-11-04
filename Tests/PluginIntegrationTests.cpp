@@ -116,14 +116,14 @@ juce::AudioBuffer<float> renderImpulse (DualIRAudioProcessor& processor)
 bool matches (const juce::AudioBuffer<float>& actual,
               const juce::AudioBuffer<float>& a, float gainA,
               const juce::AudioBuffer<float>& b, float gainB,
-              float tolerance = 0.00003f)
+              float tolerance = 0.00003f, bool bypass = false)
 {
     for (int channel = 0; channel < actual.getNumChannels(); ++channel)
         for (int sample = 0; sample < actual.getNumSamples(); ++sample)
         {
             const auto av = sample < a.getNumSamples() ? a.getSample (channel, sample) : 0.0f;
             const auto bv = sample < b.getNumSamples() ? b.getSample (channel, sample) : 0.0f;
-            const auto expected = av * gainA + bv * gainB;
+            const auto expected = (av * gainA + bv * gainB) * (bypass ? 1.0f : std::pow (10.0f, -0.6f));
             const auto value = actual.getSample (channel, sample);
             if (! std::isfinite (value) || std::abs (value - expected) > tolerance)
                 return false;
@@ -262,7 +262,7 @@ int main()
                     * juce::Decibels::decibelsToGain (test.outputDb)
                 : 0.0f;
             checks.expect (test.bypass
-                               ? matches (firstBlock, dryImpulse, 1.0f, dryImpulse, 0.0f)
+                               ? matches (firstBlock, dryImpulse, 1.0f, dryImpulse, 0.0f, 0.00003f, true)
                                : matches (firstBlock, monoIR, expectedGain, monoIR, 0.0f),
                            std::string (test.name) + ": settings apply from the first prepared audio sample");
         }
@@ -430,8 +430,8 @@ int main()
     for (int channel = 0; channel < cleared.getNumChannels(); ++channel)
         for (int sample = 0; sample < cleared.getNumSamples(); ++sample)
             clearIsDry = clearIsDry && std::abs (cleared.getSample (channel, sample)
-                                                - (sample == 0 ? 1.0f : 0.0f)) < 0.00003f;
-    checks.expect (clearIsDry, "Clearing both empty slots returns transparent dry audio");
+                                                - (sample == 0 ? std::pow (10.0f, -0.6f) : 0.0f)) < 0.00003f;
+    checks.expect (clearIsDry, "Clearing both slots preserves calibrated dry audio");
 
     std::cout << checks.total - checks.failed << '/' << checks.total << " checks passed\n";
     return checks.failed == 0 ? 0 : 1;

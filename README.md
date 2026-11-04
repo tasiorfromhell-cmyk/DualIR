@@ -2,12 +2,46 @@
 
 RottingIR od RottingPitStudio to wtyczka VST3 C++20/JUCE z dwoma równoległymi silnikami konwolucji do odpowiedzi impulsowych kolumn gitarowych. Obsługuje mono i stereo, automatyzację parametrów oraz zapis IR wewnątrz stanu projektu DAW.
 
+## Wersje i wydania
+
+Aktualny numer pochodzi z `VERSION`; historia jest w [CHANGELOG.md](CHANGELOG.md).
+Każde ukończone zlecenie modyfikacji otrzymuje nowy numer SemVer: PATCH dla
+poprawek, MINOR dla kompatybilnych funkcji, MAJOR dla zmian niekompatybilnych.
+Nie wolno przesuwać wcześniejszych tagów, usuwać wydań ani zastępować ich ZIP-ów.
+
+GitHub Actions buduje Windows x64 Release dla `main` i tagów `v*`, weryfikuje
+zgodność tagu z VERSION, uruchamia testy, sprawdza PE/AMD64 i kompletność pakietu.
+Nowy tag i stabilne GitHub Release powstają dopiero po udanym buildzie i testach.
+Wypchnięty ręcznie nowy tag uruchamia ten sam proces. Publikacja przechodzi przez
+wersję roboczą; nieudany upload pozostawia draft. Istniejące wydania są pomijane
+bez zmiany ich plików. ZIP: `RottingIR-vMAJOR.MINOR.PATCH-Windows-x64.zip`,
+z kompletnym `RottingIR.vst3/`.
+
+## Przeglądarki IR
+
+Każdy CAB zawiera ścieżkę folderu, BROWSE otwierający natywne okno folderów,
+przewijaną listę WAV/AIF/AIFF i przyciski `<` / `>` z zawijaniem. Wybór wiersza
+lub strzałki góra/dół ładuje IR w tle. Sortowanie jest naturalne (IR2 przed IR10).
+Drag & drop ustawia folder i zaznacza plik. Skanowanie katalogu i dekodowanie
+nie odbywają się w audio callback; listy JUCE renderują tylko widoczne wiersze.
+
+`Link IR Browser Folders` jest domyślnie ON i łączy wyłącznie przeglądane foldery.
+Aktywne IR A/B pozostają niezależne. OFF→ON wybiera folder ostatnio ręcznie
+zmienionego CAB (domyślnie A); ON→OFF zachowuje obie ścieżki. IR poza aktualnym
+folderem nadal gra i jest oznaczony komunikatem. Stan zapisuje foldery, aktywne
+ścieżki, ustawienie Link oraz osadzone próbki IR. Przy braku źródłowych plików
+odtwarzane są osadzone IR, a lista zgłasza niedostępność folderu.
+
+Od v1.1.0 istniejący stopień OUTPUT zawiera dodatkowe −12 dB (0.2511886432),
+po konwolucji i miksie, przed miernikiem i hostem. Nie dodano parametru gain.
+Bypass nadal przekazuje oryginalny sygnał. Projekt nie ma osobnego etapu Room.
+
 ## Obsługa
 
-- Wczytaj WAV/AIFF przyciskiem **Load IR** w slocie A lub B albo przeciągnij go na wybrany slot. Dwa upuszczone pliki trafiają kolejno do A i B.
+- Wybierz folder przez **BROWSE** i kliknij WAV/AIFF na liście w slocie A lub B albo przeciągnij go na wybrany slot. Dwa upuszczone pliki trafiają kolejno do A i B.
 - Każdy slot ma poziom od −24 do +24 dB, włączenie/wyciszenie, odwrócenie polaryzacji i przycisk usunięcia IR.
 - Przy dwóch załadowanych IR suwak **A/B blend** miesza ich wyjścia liniowo: A ma wagę `1 − blend`, B ma wagę `blend`. Wyciszenie slotu zachowuje wagę drugiego slotu.
-- Jeden załadowany IR otrzymuje pełną wagę niezależnie od blend. Dwa puste sloty przepuszczają sygnał bez zmian; nadal działa poziom wyjściowy od −24 do +12 dB.
+- Jeden załadowany IR otrzymuje pełną wagę niezależnie od blend. Dwa puste sloty przepuszczają sygnał przez skalibrowany stopień wyjściowy; nadal działa poziom wyjściowy od −24 do +12 dB oraz dodatkowa stała kalibracja −12 dB.
 - **Bypass** przepuszcza oryginalny sygnał, omijając konwolucję i poziom wyjściowy. Wskaźniki pokazują poziomy wejścia i wyjścia.
 
 IR może mieć jeden lub dwa kanały, częstotliwość 8–384 kHz, długość do 2 sekund i rozmiar pliku do 16 MiB. Loader odrzuca uszkodzone dane, ciszę i próbki NaN/Inf. Zachowuje amplitudę, początkową ciszę i długość IR, bez normalizacji ani przycinania. JUCE przelicza częstotliwość próbkowania do częstotliwości sesji.
@@ -134,8 +168,8 @@ Kod projektu, w tym `.github/workflows/windows.yml`, musi znajdować się w repo
 1. Otwórz repozytorium `tasiorfromhell-cmyk/DualIR` w GitHub i wybierz **Actions**. Jeśli GitHub wyświetli prośbę o włączenie Actions, włącz je.
 2. Po lewej wybierz **Windows x64 VST3**, następnie **Run workflow**, gałąź zawierającą projekt (np. `main`) i zielony przycisk **Run workflow**. Workflow uruchamia się też automatycznie przy pushu.
 3. Otwórz nowy przebieg i poczekaj na zielony wynik zadania **VS2022 x64 Release**. Przy błędzie otwórz nieudany krok, aby przeczytać log.
-4. Na stronie pomyślnego przebiegu przewiń do **Artifacts** i kliknij **RottingIR-Windows-x64-VST3**. Pobieranie wymaga zalogowania do GitHub.
-5. Rozpakuj pobrany ZIP artefaktu, a następnie zawarty w nim `RottingIR-Windows-x64-VST3.zip`. Wewnętrzny ZIP zawiera katalog `RottingIR.vst3/` z binarną wtyczką `RottingIR.vst3/Contents/x86_64-win/RottingIR.vst3`.
+4. Na stronie pomyślnego przebiegu przewiń do **Artifacts** i kliknij **RottingIR-vMAJOR.MINOR.PATCH-Windows-x64**. Pobieranie wymaga zalogowania do GitHub.
+5. Rozpakuj pobrany ZIP artefaktu, a następnie zawarty w nim `RottingIR-vMAJOR.MINOR.PATCH-Windows-x64.zip`. Wewnętrzny ZIP zawiera katalog `RottingIR.vst3/` z binarną wtyczką `RottingIR.vst3/Contents/x86_64-win/RottingIR.vst3`.
 6. Do REAPER zainstaluj cały katalog `RottingIR.vst3`, nie samą wewnętrzną bibliotekę. Instrukcja skanowania znajduje się wyżej.
 
 ## Struktura i zależności

@@ -46,7 +46,7 @@ void DualCabEngine::prepare (double sampleRate, int maximumBlockSize, int channe
         hasB ? cabGain (initialSettings.b) * (hasA ? blend : 1.0f) : 0.0f);
     dryGain.setCurrentAndTargetValue (! hasA && ! hasB ? 1.0f : 0.0f);
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (
-        finiteClamp (initialSettings.outputDb, 0.0f, -24.0f, 12.0f)));
+        finiteClamp (initialSettings.outputDb, 0.0f, -24.0f, 12.0f) - 12.0f));
     bypassMix.setCurrentAndTargetValue (initialSettings.bypass ? 1.0f : 0.0f);
 }
 
@@ -117,7 +117,7 @@ void DualCabEngine::processChunk (juce::AudioBuffer<float>& buffer, int offset, 
     gainB.setTargetValue (hasB ? cabGain (settings.b) * (hasA ? blend : 1.0f) : 0.0f);
     dryGain.setTargetValue (! hasA && ! hasB ? 1.0f : 0.0f);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (
-        finiteClamp (settings.outputDb, 0.0f, -24.0f, 12.0f)));
+        finiteClamp (settings.outputDb, 0.0f, -24.0f, 12.0f) - 12.0f));
     bypassMix.setTargetValue (settings.bypass ? 1.0f : 0.0f);
 
     for (int sample = 0; sample < count; ++sample)

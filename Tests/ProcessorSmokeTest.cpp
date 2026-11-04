@@ -72,11 +72,11 @@ void checkAudio (Checks& checks, DualIRAudioProcessor& processor, int channels,
         for (int sample = 0; sample < blockSize; ++sample)
         {
             const auto actual = buffer.getSample (channel, sample);
-            identical = identical && juce::exactlyEqual (actual, testSample (channel, sample));
+            identical = identical && std::abs (actual - testSample (channel, sample) * std::pow (10.0f, -0.6f)) < 1.0e-6f;
             finite = finite && std::isfinite (actual);
         }
 
-    checks.expect (identical, "Signal remains identical: " + description);
+    checks.expect (identical, "Signal receives exactly -12 dB: " + description);
     checks.expect (finite, "Signal contains no NaN or infinity: " + description);
     checks.expect (midi.isEmpty(), "No MIDI events generated: " + description);
 
@@ -233,6 +233,98 @@ void checkEditorControls (Checks& checks, juce::AudioProcessorEditor& editor,
                    && pairB.name == first.getFile().getFileName(), "Two-file drop maps files to IR A and B");
 }
 
+void checkBrowserGUI (Checks& checks, juce::AudioProcessorEditor& editor,
+                      DualIRAudioProcessor& processor)
+{
+    const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory)
+        .getNonexistentChildFile ("RottingIR-GUI-browser", {}, false);
+    root.createDirectory();
+    juce::AudioBuffer<float> ir (1, 32); ir.clear(); ir.setSample (0, 0, 0.5f);
+    const auto bytes = dualir::IRLoader::encodeWav (ir, 48000.0);
+    for (int index = 1; index <= 12; ++index)
+        root.getChildFile ("IR" + juce::String (index) + ".wav").replaceWithData (bytes.getData(), bytes.getSize());
+    processor.setLinkFolders (false);
+    processor.setBrowserFolder (0, root);
+    processor.setBrowserFolder (1, root);
+    const auto pumpUntil = [] (const auto& ready)
+    {
+        const auto end = juce::Time::getMillisecondCounterHiRes() + 5000.0;
+        while (juce::Time::getMillisecondCounterHiRes() < end)
+        {
+            juce::Timer::callPendingTimersSynchronously();
+            if (ready()) return true;
+            juce::Thread::sleep (5);
+        }
+        return ready();
+    };
+    auto* listA = dynamic_cast<juce::ListBox*> (findComponent (editor, "aIRList"));
+    auto* listB = dynamic_cast<juce::ListBox*> (findComponent (editor, "bIRList"));
+    checks.expect (listA != nullptr && listB != nullptr, "Both CABs expose virtualized JUCE IR lists");
+    if (listA != nullptr && listB != nullptr)
+    {
+        checks.expect (pumpUntil ([&] { return listA->getListBoxModel()->getNumRows() == 12 && listB->getListBoxModel()->getNumRows() == 12; }),
+                       "Both visible GUI lists show scanned folders");
+        checks.expect (listA->getViewport()->getVerticalScrollBar().isVisible(),
+                       "Long GUI list has a visible vertical scrollbar");
+        listA->selectRow (0);
+        checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (0).loading
+            && processor.getIRStatus (0).path == root.getChildFile ("IR1.wav").getFullPathName(); }),
+            "Selecting a GUI row asynchronously loads the exact IR");
+        listA->keyPressed (juce::KeyPress (juce::KeyPress::downKey));
+        checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (0).loading
+            && processor.getIRStatus (0).path == root.getChildFile ("IR2.wav").getFullPathName(); }),
+            "Focused-list down arrow selects and loads the next IR");
+        listA->keyPressed (juce::KeyPress (juce::KeyPress::upKey));
+        checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (0).loading
+            && processor.getIRStatus (0).path == root.getChildFile ("IR1.wav").getFullPathName(); }),
+            "Focused-list up arrow selects and loads the preceding IR");
+        auto* previous = dynamic_cast<juce::Button*> (findComponent (editor, "aPrevious"));
+        auto* next = dynamic_cast<juce::Button*> (findComponent (editor, "aNext"));
+        checks.expect (previous != nullptr && next != nullptr, "GUI has previous and next buttons");
+        if (previous != nullptr && next != nullptr)
+        {
+            previous->onClick();
+            checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (0).loading
+                && processor.getIRStatus (0).name == "IR12.wav"; }), "Previous GUI button wraps first to last");
+            next->onClick();
+            checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (0).loading
+                && processor.getIRStatus (0).name == "IR1.wav"; }), "Next GUI button wraps last to first");
+        }
+        auto* panel = findComponent (editor, "mainPanel");
+        auto* target = dynamic_cast<juce::FileDragAndDropTarget*> (panel);
+        if (target != nullptr)
+        {
+            target->filesDropped ({ root.getChildFile ("IR10.wav").getFullPathName() }, 600, 150);
+            checks.expect (pumpUntil ([&] { return ! processor.getIRStatus (1).loading
+                && processor.getIRStatus (1).name == "IR10.wav" && listB->getSelectedRow() == 9; }),
+                "Drop on CAB B updates its list and highlights naturally sorted IR10");
+        }
+        auto* link = dynamic_cast<juce::ToggleButton*> (findComponent (editor, "linkFolders"));
+        checks.expect (link != nullptr, "GUI exposes Link IR Browser Folders");
+        if (link != nullptr)
+        {
+            link->setToggleState (true, juce::dontSendNotification); link->onClick();
+            checks.expect (processor.getBrowserState (0).linked, "Link GUI toggle updates persistent browser setting");
+        }
+        const auto snapshotPath = juce::SystemStats::getEnvironmentVariable ("DUALIR_EDITOR_SNAPSHOT", {});
+        if (snapshotPath.isNotEmpty())
+        {
+            for (const auto size : std::array { juce::Point<int> { 800, 500 }, juce::Point<int> { 1000, 625 },
+                juce::Point<int> { 1200, 750 }, juce::Point<int> { 1400, 875 }, juce::Point<int> { 1600, 1000 },
+                juce::Point<int> { 1136, 710 } })
+            {
+                editor.setSize (size.x, size.y);
+                const auto image = editor.createComponentSnapshot (editor.getLocalBounds());
+                juce::MemoryOutputStream out; juce::PNGImageFormat png;
+                checks.expect (png.writeImageToStream (image, out)
+                    && juce::File (snapshotPath + "-loaded-" + juce::String (size.x) + ".png")
+                        .replaceWithData (out.getData(), out.getDataSize()), "Render populated IR browsers at required GUI scale");
+            }
+        }
+    }
+    root.deleteRecursively();
+}
+
 void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
 {
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
@@ -296,6 +388,7 @@ void checkEditor (Checks& checks, DualIRAudioProcessor& processor)
     }
 
     checkEditorControls (checks, *editor, processor);
+    checkBrowserGUI (checks, *editor, processor);
 }
 }
 

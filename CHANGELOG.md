@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.0
+
+- Dodano przewijane, wirtualizowane przeglądarki IR w CAB A i CAB B: ścieżka folderu, BROWSE, wybór wiersza, strzałki klawiatury oraz Previous/Next z zawijaniem.
+- Dodano naturalne sortowanie WAV/AIF/AIFF i skanowanie folderów w tle.
+- Drag & drop aktualizuje folder, listę i zaznaczenie odpowiedniego CAB.
+- Dodano domyślnie włączone Link IR Browser Folders; foldery synchronizują się w obie strony bez podmiany aktywnego IR drugiego CAB.
+- Stan projektu przechowuje folderA, folderB, activeIRA, activeIRB, linkFolders oraz ostatnio zmieniony browser. Osadzone IR nadal działają po usunięciu źródłowych plików.
+- Obniżono końcowy gain o dodatkowe 12 dB w istniejącym stopniu OUTPUT, przed miernikiem; nie zmieniono parametrów ani działania bypass.
+- Zachowano nazwę RottingIR, RottingPitStudio, logo, tło, identyfikatory VST3 i zgodność odczytu starszego stanu.
+- Dodano testy przeglądarek, GUI, recall, identyfikatora VST3 i kalibracji wyjścia.
+
 ## v1.0.0
 
 - Pierwsze stabilne wydanie RottingIR od RottingPitStudio.

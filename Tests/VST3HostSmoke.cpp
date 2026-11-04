@@ -203,11 +203,11 @@ void checkAudioLayout (Checks& checks, Instance& plugin, int channels)
         for (int channel = 0; channel < channels; ++channel)
             for (int sample = 0; sample < blockSize; ++sample)
             {
-                const auto expected = static_cast<float> ((sample * 3 + channel * 5) % 29 - 14) / 32.0f;
+                const auto expected = static_cast<float> ((sample * 3 + channel * 5) % 29 - 14) / 32.0f * std::pow (10.0f, -0.6f);
                 const auto value = output[static_cast<size_t> (channel)][static_cast<size_t> (sample)];
                 transparent = transparent && std::isfinite (value) && std::abs (value - expected) < 1.0e-6f;
             }
-        checks.require (transparent, "Empty IR slots pass audio transparently through native VST3: " + label);
+        checks.require (transparent, "Native VST3 applies calibrated -12 dB output: " + label);
     }
 
     for (auto& channel : input)
@@ -253,6 +253,10 @@ void checkPlugin (Checks& checks, NativeModule& module)
     }
     checks.require (found, "Factory contains an audio module class");
     checks.require (std::strcmp (effectClass.name, "RottingIR") == 0, "Audio module is named RottingIR");
+
+    constexpr TUID stableComponent = INLINE_UID (0xABCDEF01, 0x9182FAEB, 0x446C6972, 0x44754952);
+    checks.require (std::memcmp (effectClass.cid, stableComponent, sizeof (TUID)) == 0,
+                    "Stable RottingIR VST3 component class ID is preserved");
 
     Instance plugin;
     checks.ok (owner.factory->createInstance (effectClass.cid, componentIid,

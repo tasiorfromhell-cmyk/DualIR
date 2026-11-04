@@ -53,7 +53,7 @@ void meter (juce::Graphics& g, juce::Rectangle<int> area, const juce::String& na
 }
 }
 
-class MainPanel::SlotPanel final : public juce::Component
+class MainPanel::SlotPanel final : public juce::Component, private juce::ListBoxModel
 {
 public:
     SlotPanel (DualIRAudioProcessor& p, int number, juce::Colour colour)
@@ -67,11 +67,26 @@ public:
         filename.setMinimumHorizontalScale (0.75f);
         label (metadata, "Drop a WAV / AIFF here", 12.0f, subdued);
         label (message, "", 11.5f, subdued);
+        message.setComponentID (prefix + "BrowserMessage");
         message.setJustificationType (juce::Justification::topLeft);
         label (gainLabel, "LEVEL", 11.0f, subdued);
         gainLabel.setJustificationType (juce::Justification::centred);
-        load.setButtonText ("Load IR..."); load.setComponentID (prefix + "Load");
-        load.setTooltip ("Choose a mono/stereo WAV or AIFF IR up to 2 seconds. Audio is embedded in the project state.");
+        folderPath.setComponentID (prefix + "Folder");
+        label (folderPath, "Choose an IR folder", 11.0f, subdued);
+        list.setComponentID (prefix + "IRList");
+        list.setModel (this);
+        list.setRowHeight (22);
+        list.setColour (juce::ListBox::backgroundColourId, background.withAlpha (0.94f));
+        list.setColour (juce::ListBox::outlineColourId, border);
+        list.setOutlineThickness (1);
+        list.setMultipleSelectionEnabled (false);
+        list.setClickingTogglesRowSelection (false);
+        previous.setButtonText ("<"); previous.setComponentID (prefix + "Previous");
+        next.setButtonText (">"); next.setComponentID (prefix + "Next");
+        previous.onClick = [this] { owner.stepBrowserIR (slot, -1); refresh(); };
+        next.onClick = [this] { owner.stepBrowserIR (slot, 1); refresh(); };
+        load.setButtonText ("BROWSE"); load.setComponentID (prefix + "Load");
+        load.setTooltip ("Choose a folder containing WAV / AIF / AIFF impulse responses.");
         load.onClick = [this] { openChooser(); };
         clear.setButtonText ("Clear"); clear.setComponentID (prefix + "Clear");
         clear.setTooltip ("Remove this IR. A single populated cabinet always receives the full signal.");
@@ -83,7 +98,7 @@ public:
         rotary (gain, prefix + "Gain", accent);
         gain.setTooltip ("Cabinet level, -24 to +24 dB.");
         for (auto* c : std::initializer_list<juce::Component*> {
-                 &title, &filename, &metadata, &message, &load, &clear, &enabled, &inverted, &gain, &gainLabel })
+                 &title, &folderPath, &list, &previous, &next, &filename, &metadata, &message, &load, &clear, &enabled, &inverted, &gain, &gainLabel })
             addAndMakeVisible (*c);
         gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>
             (owner.parameters, prefix + "Gain", gain);
@@ -94,10 +109,51 @@ public:
             (owner.parameters, prefix + "Invert", inverted);
         refresh();
     }
-    ~SlotPanel() override { chooser.reset(); }
+    ~SlotPanel() override { chooser.reset(); list.setModel (nullptr); }
+    int getNumRows() override { return files != nullptr ? static_cast<int> (files->size()) : 0; }
+    void paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool selected) override
+    {
+        if (row < 0 || row >= getNumRows()) return;
+        if (selected) { g.setColour (accent.withAlpha (0.24f)); g.fillAll(); }
+        g.setColour (selected ? accent : text);
+        g.setFont (juce::Font (juce::FontOptions { 12.0f }));
+        g.drawText ((*files)[static_cast<size_t> (row)].getFileName(), 7, 0, width - 14, height,
+                    juce::Justification::centredLeft, true);
+    }
+    void selectedRowsChanged (int row) override
+    {
+        if (! updatingSelection && row >= 0) owner.selectBrowserIR (slot, row);
+    }
+    void listBoxItemClicked (int row, const juce::MouseEvent&) override
+    {
+        // A second click on a highlighted, previously failed file retries loading it.
+        if (row >= 0 && owner.getIRStatus (slot).error.isNotEmpty()) owner.selectBrowserIR (slot, row);
+    }
     void refresh()
     {
         const auto status = owner.getIRStatus (slot);
+        const auto browser = owner.getBrowserState (slot);
+        if (files != browser.files)
+        {
+            files = browser.files;
+            updatingSelection = true;
+            list.updateContent();
+            updatingSelection = false;
+        }
+        folderPath.setText (browser.folder.isEmpty() ? "Choose an IR folder" : browser.folder,
+                            juce::dontSendNotification);
+        folderPath.setTooltip (browser.folder);
+        int selected = -1;
+        for (int row = 0; row < getNumRows(); ++row)
+            if ((*files)[static_cast<size_t> (row)].getFullPathName() == browser.activeIR) selected = row;
+        updatingSelection = true;
+        if (selected != list.getSelectedRow())
+        {
+            if (selected >= 0) list.selectRow (selected);
+            else list.deselectAllRows();
+        }
+        updatingSelection = false;
+        previous.setEnabled (getNumRows() > 0); next.setEnabled (getNumRows() > 0);
         filename.setText (status.loaded ? status.name : "No IR loaded", juce::dontSendNotification);
         filename.setTooltip (status.name);
         juce::String details = "Drop a WAV / AIFF here";
@@ -111,7 +167,18 @@ public:
         message.setText (status.error.isNotEmpty() ? status.error
                         : status.loaded ? "IR saved with your project."
                                         : "Empty slots do not add dry audio to a loaded cab.", juce::dontSendNotification);
-        message.setTooltip (status.error);
+        if (status.error.isEmpty())
+        {
+            const auto outside = status.loaded && (status.path.isEmpty()
+                || juce::File (status.path).getParentDirectory().getFullPathName() != browser.folder
+                || (! status.loading && selected < 0));
+            message.setText (browser.scanning ? "Scanning IR folder..."
+                : browser.error.isNotEmpty() ? browser.error
+                : outside ? "Active IR is outside this folder."
+                : getNumRows() == 0 ? "No WAV / AIF / AIFF files in this folder."
+                : "IR saved with your project.", juce::dontSendNotification);
+        }
+        message.setTooltip (status.error.isNotEmpty() ? status.error : browser.error);
         clear.setEnabled (status.loaded || status.loading);
     }
     void paint (juce::Graphics& g) override
@@ -123,14 +190,18 @@ public:
     }
     void resized() override
     {
-        title.setBounds (32, 20, getWidth() - 52, 23);
-        filename.setBounds (20, 56, getWidth() - 40, 27);
-        metadata.setBounds (20, 89, getWidth() - 40, 18);
-        message.setBounds (20, 116, getWidth() - 40, 38);
-        load.setBounds (20, 160, 125, 29); clear.setBounds (155, 160, 78, 29);
-        enabled.setBounds (18, 205, 170, 24); inverted.setBounds (18, 236, 174, 24);
-        gainLabel.setBounds (getWidth() - 132, 197, 112, 17);
-        gain.setBounds (getWidth() - 132, 216, 112, 88);
+        title.setBounds (32, 16, getWidth() - 52, 23);
+        folderPath.setBounds (20, 43, getWidth() - 40, 20);
+        list.setBounds (20, 68, getWidth() - 40, 96);
+        load.setBounds (20, 170, 110, 25);
+        previous.setBounds (138, 170, 32, 25); next.setBounds (178, 170, 32, 25);
+        clear.setBounds (220, 170, getWidth() - 240, 25);
+        filename.setBounds (20, 201, getWidth() - 40, 20);
+        metadata.setBounds (20, 225, 222, 16);
+        message.setBounds (20, 245, 220, 26);
+        enabled.setBounds (18, 277, 108, 24); inverted.setBounds (123, 277, 126, 24);
+        gainLabel.setBounds (getWidth() - 114, 221, 94, 17);
+        gain.setBounds (getWidth() - 114, 238, 94, 67);
     }
 private:
     void openChooser()
@@ -138,22 +209,26 @@ private:
         if (chooserOpen) return;
         chooserOpen = true;
         chooser = std::make_unique<juce::FileChooser>
-            (slot == 0 ? "Choose cabinet A impulse response" : "Choose cabinet B impulse response",
-             juce::File {}, "*.wav;*.aif;*.aiff", true);
+            (slot == 0 ? "Choose cabinet A IR folder" : "Choose cabinet B IR folder",
+             juce::File (owner.getBrowserState (slot).folder), "*", true);
         const juce::Component::SafePointer<SlotPanel> safeThis (this);
-        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
             [safeThis] (const juce::FileChooser& selected)
             {
                 if (safeThis == nullptr) return;
                 safeThis->chooserOpen = false;
                 const auto file = selected.getResult();
-                if (file != juce::File {}) safeThis->owner.requestIRLoad (safeThis->slot, file);
+                if (file != juce::File {}) safeThis->owner.setBrowserFolder (safeThis->slot, file);
             });
     }
     DualIRAudioProcessor& owner;
     int slot;
     juce::Colour accent;
-    juce::Label title, filename, metadata, message, gainLabel;
+    juce::Label title, filename, metadata, message, gainLabel, folderPath;
+    juce::ListBox list;
+    std::shared_ptr<const std::vector<juce::File>> files;
+    bool updatingSelection = false;
+    juce::TextButton previous, next;
     juce::TextButton load, clear;
     juce::ToggleButton enabled, inverted;
     juce::Slider gain;
@@ -208,12 +283,16 @@ MainPanel::MainPanel (DualIRAudioProcessor& p) : owner (p)
     output.setSliderStyle (juce::Slider::LinearHorizontal);
     output.setTextBoxStyle (juce::Slider::TextBoxRight, false, 66, 22);
     output.setColour (juce::Slider::trackColourId, cyan);
-    output.setTooltip ("Output trim, -24 to +12 dB. Bypass ignores output trim.");
+    output.setTooltip ("Output trim, -24 to +12 dB, with fixed -12 dB output calibration. Bypass ignores output trim.");
+    linkFolders.setComponentID ("linkFolders");
+    linkFolders.setToggleState (owner.getBrowserState (0).linked, juce::dontSendNotification);
+    linkFolders.onClick = [this] { owner.setLinkFolders (linkFolders.getToggleState()); };
+    addAndMakeVisible (linkFolders);
     bypass.setComponentID ("bypass");
     bypass.setTooltip ("Pass the original input around both cabinets and output trim.");
     label (blendLabel, "A / B BLEND", 11.0f, subdued);
     label (outputLabel, "OUTPUT", 11.0f, subdued); outputLabel.setJustificationType (juce::Justification::centred);
-    label (routingLabel, "No IR loaded - clean pass-through", 11.0f, subdued);
+    label (routingLabel, "No IR loaded - calibrated output", 11.0f, subdued);
     for (auto* c : std::initializer_list<juce::Component*> {
              &blend, &output, &bypass, &blendLabel, &outputLabel, &routingLabel }) addAndMakeVisible (*c);
     blendAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (owner.parameters, "blend", blend);
@@ -254,6 +333,7 @@ void MainPanel::resized()
 {
     slotA->setBounds (26, 70, 365, 310); slotB->setBounds (409, 70, 365, 310);
     bypass.setBounds (665, 24, 109, 25);
+    linkFolders.setBounds (409, 46, 280, 21);
     blendLabel.setBounds (26, 391, 150, 18); blend.setBounds (49, 411, 382, 25);
     routingLabel.setBounds (460, 403, 165, 32);
     outputLabel.setBounds (630, 391, 144, 18); output.setBounds (630, 411, 144, 25);
@@ -270,16 +350,26 @@ void MainPanel::filesDropped (const juce::StringArray& files, int x, int y)
     for (const auto& file : files) if (isAudioFile (file)) audioFiles.add (file);
     if (audioFiles.size() >= 2)
     {
-        owner.requestIRLoad (0, juce::File (audioFiles[0])); owner.requestIRLoad (1, juce::File (audioFiles[1]));
+        owner.setBrowserFolder (0, juce::File (audioFiles[0]).getParentDirectory());
+        owner.requestIRLoad (0, juce::File (audioFiles[0]));
+        owner.setBrowserFolder (1, juce::File (audioFiles[1]).getParentDirectory());
+        owner.requestIRLoad (1, juce::File (audioFiles[1]));
     }
-    else if (audioFiles.size() == 1) owner.requestIRLoad (x < getWidth() / 2 ? 0 : 1, juce::File (audioFiles[0]));
+    else if (audioFiles.size() == 1)
+    {
+        const auto slot = x < getWidth() / 2 ? 0 : 1;
+        const juce::File file (audioFiles[0]);
+        owner.setBrowserFolder (slot, file.getParentDirectory());
+        owner.requestIRLoad (slot, file);
+    }
 }
 void MainPanel::timerCallback()
 {
     slotA->refresh(); slotB->refresh();
+    linkFolders.setToggleState (owner.getBrowserState (0).linked, juce::dontSendNotification);
     const auto a = owner.getIRStatus (0), b = owner.getIRStatus (1);
     const auto status = a.loading || b.loading ? "Preparing IR..."
-                      : ! a.loaded && ! b.loaded ? "No IR: clean pass-through"
+                      : ! a.loaded && ! b.loaded ? "No IR: calibrated output"
                       : a.loaded && b.loaded ? "Parallel A / B convolution"
                                            : a.loaded ? "Cabinet A active" : "Cabinet B active";
     routingLabel.setText (status, juce::dontSendNotification);

@@ -5,6 +5,8 @@
 #include <array>
 #include <atomic>
 #include <optional>
+#include <memory>
+#include <vector>
 
 class DualIRAudioProcessor final : public juce::AudioProcessor, private juce::Thread
 {
@@ -36,7 +38,7 @@ public:
 
     struct IRStatus
     {
-        juce::String name, error;
+        juce::String name, error, path, requestedPath;
         bool loaded = false, loading = false;
         double sampleRate = 0.0;
         int numSamples = 0, numChannels = 0;
@@ -45,6 +47,18 @@ public:
     void requestIRLoad (int slot, const juce::File& file);
     void clearIR (int slot);
     IRStatus getIRStatus (int slot) const;
+    struct BrowserState
+    {
+        juce::String folder, activeIR, error;
+        std::shared_ptr<const std::vector<juce::File>> files;
+        bool scanning = false, linked = true;
+        juce::uint64 revision = 0;
+    };
+    void setBrowserFolder (int slot, const juce::File& folder);
+    void setLinkFolders (bool linked);
+    BrowserState getBrowserState (int slot) const;
+    void selectBrowserIR (int slot, int row);
+    void stepBrowserIR (int slot, int direction);
     float getInputPeak() const noexcept;
     float getOutputPeak() const noexcept;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -52,7 +66,7 @@ public:
 
 private:
     enum class RequestKind { file, encoded, clear };
-    struct StoredIR { juce::MemoryBlock encoded; juce::String name; };
+    struct StoredIR { juce::MemoryBlock encoded; juce::String name, path; };
     struct Request
     {
         RequestKind kind = RequestKind::clear;
@@ -75,6 +89,16 @@ private:
         std::atomic<float>* enabled = nullptr;
         std::atomic<float>* inverted = nullptr;
     };
+    struct Browser
+    {
+        juce::String folder, error;
+        std::shared_ptr<const std::vector<juce::File>> files = std::make_shared<const std::vector<juce::File>>();
+        bool scanning = false;
+        juce::uint64 generation = 0, revision = 0;
+        std::optional<juce::File> pendingScan;
+    };
+    void queueScanLocked (int slot, const juce::File& folder);
+    bool scanBrowsers();
     void run() override;
     void enqueue (int slot, Request request, std::optional<StoredIR> desired);
     dualir::EngineSettings readSettings (bool forceBypass = false) const noexcept;
@@ -89,6 +113,9 @@ private:
     std::atomic<float> inputPeak { 0.0f }, outputPeak { 0.0f };
     mutable juce::CriticalSection slotLock;
     std::array<Slot, 2> slots;
+    std::array<Browser, 2> browsers;
+    bool linkFolders = true;
+    int lastBrowser = 0;
     juce::WaitableEvent loaderWake;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DualIRAudioProcessor)
 };
